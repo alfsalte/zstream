@@ -1,0 +1,61 @@
+
+
+zstream is a set of classes for using zlib with iostreams.
+
+Unlike the contrib versions this one allows you to compress streams, you
+can read from or write to files but you don't have to.
+
+Here is the basic way to do it:
+
+// to compress a some text to a file.
+
+std::ofstream file("some.file.z");
+alf::DefaultCompressor<char> C; // we use the default compressor (deflate).
+zostream<std::ofstream,alf::DefaultCompressor> zs(file, C);
+
+// to compress the data write to zs - don't use file, zs uses file to
+// write the data to some.file.z.
+
+The package as is provides two other compressors/decompressors but they
+are both dummy: NoCompressor doesn't compress at all and the output
+becomes a copy of whatever you write in, i.e. as if you wrote directly
+to file above. FailCompressor also doesn't compress at all and instead
+return error code whenever you try to use it.
+
+You can also write your own Compressor/Decompressor pair and they are
+designed so that you can put them both in the same class, if you write
+a class Foo that has both the Compressor interface as well as the
+Decompressor interface you can use the same class for both purposes. It
+will call the compress method to compress and the decompress method
+to decompress.
+
+The DefaultDecompressor is the reverse of the deflate (inflate).
+
+If you have the compressed data in a string you can uncompress it
+like this:
+
+std::string compressed_data;
+std::istringstream iss(compressed_data);
+alf::DefaultDecompressor D<char>;
+alf::zistream<std::istream,alf::DefaultDecompressor> zs(iss, D);
+
+// read uncompressed data from zs.
+
+It also works with other types of characters, wchar_t, char32_t etc but
+the compressed data should use a char stream regardless of the uncompressed
+stream's char type. The Compressor/Decompressor should be propertly typed
+and coded to convert between the two. Note that it will typically not
+involve a utf-8 conversion to char but rather a binary take two chars
+for each char16_t or four chars for each char32_t and so on. For unicode, If
+you do convert to UTF-8 it has the advantage that you can copy the compressed
+text to another machine and it will expand correctly there too - although
+a simple signature check and making sure the first char is U+FFEF you should
+be fine even if you do not convert to UTF-8.
+
+That you can write your own compressor/decompressor (look at the code in
+the default compressor/decompressor to see how they work). Means you can
+essentially use whatever algorithm you like for compressing data provided
+you have functions to compress/decompress chunks of data.
+
+The code works by essentially chaining together one stream with another stream
+and then converting the data in between.
